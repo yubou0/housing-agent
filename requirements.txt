@@ -1,0 +1,8 @@
+google-adk
+python-dotenv
+requests
+beautifulsoup4
+pyproj
+geopy
+flask
+fastmcp
