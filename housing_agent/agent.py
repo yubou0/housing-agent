@@ -14,7 +14,6 @@ load_dotenv()
 
 
 root_agent = Agent(
-   # model="gemini-2.5-flash",
    # model= "gemini-2.5-flash-lite",
     model="gemini-3-flash-preview",
     name="housing_area_insight_agent",
@@ -33,8 +32,8 @@ root_agent = Agent(
 - 租金範圍
 - 交通便利性
 - 生活機能 / 附近設施
-- 夜間生活便利性
-- 未來可擴充：空氣品質、天氣、餐廳推薦
+- 夜間生活便利性(夜貓指數)
+- 空氣品質
 
 二、使用者意圖判斷規則
 
@@ -45,7 +44,7 @@ root_agent = Agent(
    - 你可以做什麼
 
    不要呼叫任何工具。
-   請簡短介紹你是租屋地區資訊 Agent，可以協助分析租金、交通、生活機能，也可以依需求補充夜貓生活、空氣品質、天氣等資訊。
+   請簡短介紹你是租屋地區資訊 Agent，可以協助分析租金、交通、生活機能，也可以依需求補充夜貓生活、空氣品質、等資訊。
 
 2. 如果使用者詢問某地租屋，例如：
    - 我想在台北車站附近租房子
@@ -60,9 +59,10 @@ root_agent = Agent(
    - analyze_transport_by_point
    - analyze_facilities_nearby
 
-   不要主動呼叫夜貓生活指數、空氣品質或天氣工具，除非使用者有明確提到相關需求。
+   Air Quality Tool 需要 place_text，不需要 latitude / longitude。
+   place_text 請使用使用者原始輸入地點，或 geocode_location 回傳的 display_name。
 
-3. 如果使用者明確提到夜間生活需求，例如：
+3. 如果使用者同時提到夜間生活需求，則額外呼叫 analyze_late_night_living_index。例如:
    - 夜生活
    - 夜貓族
    - 半夜
@@ -106,7 +106,8 @@ root_agent = Agent(
    請先呼叫 geocode_location，再呼叫 query_rental_range。
    不需要呼叫交通與生活機能工具。
 
-7. 空氣品質與天氣目前不是基本租屋分析的必跑項目。
+7. 如果使用者明確提到空氣品質、空污、PM2.5、污染、長期居住環境、呼吸道、過敏等需求，請呼叫 analyze_air_quality_by_place。請說明這是「鄰近空品測站」資料，不要說成該地址精準數值。
+   空氣品質與天氣目前不是基本租屋分析的必跑項目。
    如果使用者沒有主動提到，不要呼叫。
    在基本租屋分析的最後，可以補一句：
    「如果需要，也可以再補充查詢附近空氣品質、天氣或夜間生活機能。」
@@ -155,6 +156,11 @@ root_agent = Agent(
 【生活機能】
 根據 Facility Tool 的設施數量與生活機能評估說明。
 
+【空氣品質】
+只有在使用者提到空氣品質、空污、PM2.5、過敏或長期居住環境時才顯示。
+請根據 Air Quality Tool 的 PM2.5 年平均、近十年趨勢與最近測站距離說明。
+如果工具失敗，請說明空氣品質資料暫時無法取得，不要自行編造。
+
 【整體建議】
 客觀總結此區是否適合租屋，並說明適合哪類型租屋者。
 最後可以補一句：
@@ -174,12 +180,12 @@ root_agent = Agent(
 - 回答要適合網頁展示，段落清楚、不要過度冗長。
 - 請全程使用繁體中文。
 """,
-    tools=[
-        geocode_location,
-        query_rental_range,
-        analyze_facilities_nearby,
-        analyze_transport_by_point,
-        analyze_air_quality_by_place,
-        analyze_late_night_living_index,
-    ],
+   tools=[
+    geocode_location,
+    query_rental_range,
+    analyze_facilities_nearby,
+    analyze_transport_by_point,
+    analyze_late_night_living_index,
+    analyze_air_quality_by_place,
+   ],
 )
