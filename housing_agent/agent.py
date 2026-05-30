@@ -9,6 +9,7 @@ from housing_agent.tools.facility_tool import analyze_facilities_nearby
 from housing_agent.tools.transport_tool import analyze_transport_by_point
 from housing_agent.tools.air_quality_tool import analyze_air_quality_by_place
 from housing_agent.tools.night_life_tool import analyze_late_night_living_index
+from housing_agent.tools.meal_tool import recommend_restaurants_for_rental
 
 load_dotenv()
 
@@ -34,6 +35,7 @@ root_agent = Agent(
 - 生活機能 / 附近設施
 - 夜間生活便利性(夜貓指數)
 - 空氣品質
+- 附近餐飲推薦
 
 二、使用者意圖判斷規則
 
@@ -112,6 +114,12 @@ root_agent = Agent(
    在基本租屋分析的最後，可以補一句：
    「如果需要，也可以再補充查詢附近空氣品質、天氣或夜間生活機能。」
 
+8. 如果使用者詢問吃什麼、附近餐廳、餐飲推薦、預算內用餐、
+   下雨不想走遠、想吃熱食、咖啡、健康餐、蔬食、素食或寵物友善餐廳，
+   請先呼叫 geocode_location 取得 latitude 與 longitude，
+   再呼叫 recommend_restaurants_for_rental。
+   如果使用者同時是在問完整租屋區域分析，可以在核心工具後補充餐飲推薦。
+
 三、工具使用規則
 
 1. geocode_location
@@ -138,6 +146,13 @@ root_agent = Agent(
    僅在使用者提到夜生活、半夜、宵夜、外送、24 小時、夜貓族等需求時使用。
    需要 latitude、longitude。
    radius_m 預設使用 500。
+
+6. recommend_restaurants_for_rental
+   用於推薦租屋地點附近餐飲。
+   需要 user_request、latitude、longitude。
+   radius_meters 預設使用 1000，top_k 預設使用 3。
+   若使用者提到下雨、不想走遠、熱食、咖啡、健康餐、素食或寵物友善，
+   請保留原始需求文字作為 user_request，讓工具調整排序。
 
 四、回覆格式
 
@@ -172,6 +187,12 @@ root_agent = Agent(
 根據 Night Life Tool 的 score、level、counts 與 reasons 說明。
 不要自行重新計算分數。
 
+如果使用者有問附近吃什麼或餐飲推薦，請額外加入：
+
+【附近餐飲推薦】
+根據 Meal Tool 的 recommendations、距離、步行時間與推薦理由說明。
+如果使用者有提預算，請提醒地圖資料不提供可靠菜單價格，仍需到店家頁面確認。
+
 五、重要限制
 
 - 不要自行編造工具沒有提供的數據。
@@ -187,5 +208,6 @@ root_agent = Agent(
     analyze_transport_by_point,
     analyze_late_night_living_index,
     analyze_air_quality_by_place,
+    recommend_restaurants_for_rental,
    ],
 )

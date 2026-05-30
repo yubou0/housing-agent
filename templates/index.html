@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>居析 Agent | 租屋地區智慧分析</title>
+    <meta name="description" content="輸入租屋地點，由 Housing Agent 整理租金、交通、生活機能、空氣品質與夜間生活。">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="居析 Agent 首頁">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>居析 <small>Agent</small></span>
+      </a>
+
+      <nav class="nav-links" aria-label="主要導覽">
+        <a class="active" href="#analyze">生活圈分析</a>
+        <a href="#details">周邊情報</a>
+        <a href="#sources">API 狀態</a>
+      </nav>
+
+      <button class="member-button" type="button" id="demo-fill">快速示範</button>
+    </header>
+
+    <main>
+      <section class="hero" id="analyze">
+        <div class="hero-content">
+          <p class="eyebrow"><span></span>Housing Area Insight Agent</p>
+
+          <h1>租屋小幫手<br><strong>幫您分析租屋生活圈</strong></h1>
+
+          <p class="hero-copy">
+            輸入捷運站、學校、地標或地址，Agent 會整理租金範圍、交通便利性、生活機能，並依需求加查空氣品質、夜間生活與附近餐飲。
+          </p>
+
+          <form class="search-box" id="area-form">
+            <label class="sr-only" for="location-input">輸入租屋地點</label>
+            <span class="pin-icon" aria-hidden="true"></span>
+
+            <input
+              id="location-input"
+              name="location"
+              type="text"
+              value="{{ initial_area.area }}附近"
+              placeholder="例如：中央大學附近、台北車站附近"
+              autocomplete="off"
+            >
+
+            <button type="submit">開始分析 <span>→</span></button>
+          </form>
+
+          <div class="quick-search" aria-label="熱門區域">
+            <span>熱門搜尋</span>
+            {% for area in quick_areas %}
+            <button type="button" data-area="{{ area }}">{{ area.replace("附近", "") }}</button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="preview-column" id="insights">
+          <p class="preview-label">
+            Agent 分析摘要
+            <span id="report-time">{{ initial_area.generated_at }} 待查詢</span>
+          </p>
+
+          <article class="area-card" aria-live="polite">
+            <div class="area-heading">
+              <div class="location-badge" aria-hidden="true"><span></span></div>
+
+              <div>
+                <h2 id="area-title">{{ initial_area.area }}</h2>
+                <p id="area-district">等待地點解析</p>
+              </div>
+
+              <span class="score-badge">狀態 <b id="analysis-status">Ready</b></span>
+            </div>
+
+            <div class="fact-grid">
+              <div class="fact rent">
+                <div class="fact-head">
+                  <span class="fact-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 2v20"></path>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                  </span>
+                  <small>租金範圍</small>
+                </div>
+                <strong id="rent-value">查詢後顯示</strong>
+              </div>
+
+              <div class="fact traffic">
+                <div class="fact-head">
+                  <span class="fact-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M6 17h12"></path>
+                      <path d="M6 17l1.5-7h9L18 17"></path>
+                      <path d="M8 17v2"></path>
+                      <path d="M16 17v2"></path>
+                      <path d="M8.5 13h7"></path>
+                    </svg>
+                  </span>
+                  <small>交通便利性</small>
+                </div>
+                <strong id="traffic-value">查詢後顯示</strong>
+              </div>
+
+              <div class="fact facility">
+                <div class="fact-head">
+                  <span class="fact-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 21h18"></path>
+                      <path d="M5 21V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13"></path>
+                      <path d="M9 21v-5h6v5"></path>
+                      <path d="M9 10h.01"></path>
+                      <path d="M12 10h.01"></path>
+                      <path d="M15 10h.01"></path>
+                    </svg>
+                  </span>
+                  <small>生活機能</small>
+                </div>
+                <strong id="facility-value">查詢後顯示</strong>
+              </div>
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="card-block">
+              <h3>整體建議</h3>
+              <p id="area-summary">{{ initial_area.summary }}</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="detail-dashboard" id="details">
+        <div class="section-heading">
+          <p class="eyebrow small"><span></span>Living Details</p>
+          <h2>生活圈</h2>
+        </div>
+
+        <div class="detail-dashboard-grid">
+          <section class="detail-panel">
+            <div class="panel-title">
+              <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 21h18"></path>
+                  <path d="M5 21V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13"></path>
+                  <path d="M9 21v-5h6v5"></path>
+                  <path d="M9 10h.01"></path>
+                  <path d="M12 10h.01"></path>
+                  <path d="M15 10h.01"></path>
+                </svg>
+              </span>
+              <h3>附近設施</h3>
+            </div>
+
+            <div class="facility-list" id="facility-list">
+              <div class="facility">
+                <b class="facility-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 10h16"></path>
+                    <path d="M5 10l1.2-5h11.6L19 10"></path>
+                    <path d="M6 10v10h12V10"></path>
+                    <path d="M9 20v-5h6v5"></path>
+                  </svg>
+                </b>
+                <span>超商 / 超市<small>等待查詢</small></span>
+              </div>
+
+              <div class="facility">
+                <b class="facility-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"></path>
+                    <path d="M9 21v-5h6v5"></path>
+                    <path d="M12 7v6"></path>
+                    <path d="M9 10h6"></path>
+                  </svg>
+                </b>
+                <span>醫療 / 藥局<small>等待查詢</small></span>
+              </div>
+
+              <div class="facility">
+                <b class="facility-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3l4 7h-3l4 7h-4v4h-2v-4H7l4-7H8z"></path>
+                  </svg>
+                </b>
+                <span>公園 / 休閒<small>等待查詢</small></span>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-panel">
+            <div class="panel-title">
+              <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 17h10"></path>
+                  <path d="M6 17l1.6-7.2A2 2 0 0 1 9.5 8h5a2 2 0 0 1 1.9 1.8L18 17"></path>
+                  <path d="M8 17v2"></path>
+                  <path d="M16 17v2"></path>
+                  <path d="M9 12h6"></path>
+                </svg>
+              </span>
+              <h3>交通站點</h3>
+            </div>
+
+            <div class="mini-list" id="transport-list">
+              <p>查詢後會顯示附近捷運、台鐵或公車站點。</p>
+            </div>
+          </section>
+
+          <section class="detail-panel meal-panel">
+            <div class="panel-title">
+              <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 2v9"></path>
+                  <path d="M11 2v9"></path>
+                  <path d="M7 6h4"></path>
+                  <path d="M9 11v11"></path>
+                  <path d="M17 2v20"></path>
+                  <path d="M17 2c2.2 1.8 3 4 3 6.5S19.2 13 17 14"></path>
+                </svg>
+              </span>
+              <h3>餐廳推薦</h3>
+            </div>
+
+            <div class="mini-list" id="meal-list">
+              <p>查詢後會顯示推薦餐廳。</p>
+            </div>
+          </section>
+
+          <section class="detail-panel">
+            <div class="panel-title">
+              <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"></path>
+                  <path d="M17 4h.01"></path>
+                  <path d="M20 7h.01"></path>
+                </svg>
+              </span>
+              <h3>夜貓友善</h3>
+            </div>
+
+            <div class="mini-list" id="extra-list">
+              <p>查詢後會顯示空氣品質或夜間生活結果。</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="feature-strip">
+        <div class="feature-intro">
+          <p>Agent 能力</p>
+          <h2>租屋前需要交叉看的六種資訊</h2>
+        </div>
+
+        <div class="feature-item">
+          <b aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 21s7-5.2 7-12a7 7 0 0 0-14 0c0 6.8 7 12 7 12z"></path>
+              <circle cx="12" cy="9" r="2.4"></circle>
+            </svg>
+          </b>
+          <strong>地點解析</strong>
+          <span>地標轉座標</span>
+        </div>
+
+        <div class="feature-item">
+          <b aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2v20"></path>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </b>
+          <strong>租金</strong>
+          <span>Q1 / 中位數 / Q3</span>
+        </div>
+
+        <div class="feature-item">
+          <b aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 17h10"></path>
+              <path d="M6 17l1.6-7.2A2 2 0 0 1 9.5 8h5a2 2 0 0 1 1.9 1.8L18 17"></path>
+              <path d="M8 17v2"></path>
+              <path d="M16 17v2"></path>
+              <path d="M9 12h6"></path>
+            </svg>
+          </b>
+          <strong>交通</strong>
+          <span>捷運、公車、台鐵</span>
+        </div>
+
+        <div class="feature-item">
+          <b aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 21h18"></path>
+              <path d="M5 21V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13"></path>
+              <path d="M9 21v-5h6v5"></path>
+              <path d="M9 10h.01"></path>
+              <path d="M12 10h.01"></path>
+              <path d="M15 10h.01"></path>
+            </svg>
+          </b>
+          <strong>生活機能</strong>
+          <span>超商、醫療、公園</span>
+        </div>
+
+        <div class="feature-item">
+          <b aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"></path>
+              <path d="M17 4h.01"></path>
+              <path d="M20 7h.01"></path>
+            </svg>
+          </b>
+          <strong>夜間需求</strong>
+          <span>宵夜與 24 小時店家</span>
+        </div>
+
+        <div class="feature-item">
+          <b aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 2v9"></path>
+              <path d="M11 2v9"></path>
+              <path d="M7 6h4"></path>
+              <path d="M9 11v11"></path>
+              <path d="M17 2v20"></path>
+              <path d="M17 2c2.2 1.8 3 4 3 6.5S19.2 13 17 14"></path>
+            </svg>
+          </b>
+          <strong>附近餐飲</strong>
+          <span>餐廳、咖啡與熱食</span>
+        </div>
+      </section>
+
+      <section class="data-flow" id="sources">
+        <p class="eyebrow small"><span></span>Live Data Pipeline</p>
+        <h2>資料流程與狀態</h2>
+
+        <div class="flow-items">
+          <span>地點解析</span>
+          <i>→</i>
+          <span>租金查詢</span>
+          <i>→</i>
+          <span>交通分析</span>
+          <i>→</i>
+          <span>生活設施</span>
+          <i>→</i>
+          <span>餐飲推薦</span>
+          <i>→</i>
+          <span>Agent 摘要</span>
+        </div>
+
+        <div class="source-list" id="source-list">
+          <div>尚未查詢。送出地點後會列出各資料源回應狀態。</div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="chatbot" id="chatbot" aria-label="AI 租屋顧問">
+      <section class="chat-panel" id="chat-panel" aria-hidden="true">
+        <header>
+          <div class="bot-avatar small-avatar"><span></span></div>
+
+          <div>
+            <strong>居析 Agent</strong>
+            <small>租屋地區顧問</small>
+          </div>
+
+          <button id="chat-close" type="button" aria-label="收合對話">×</button>
+        </header>
+
+        <div class="messages" id="messages">
+          <div class="message bot">
+            嗨！輸入「中央大學附近租屋」、「公館附近夜間生活方便嗎」或「台北車站附近吃什麼」，我會幫你整理。
+          </div>
+        </div>
+
+        <div class="chat-suggestions">
+          <button type="button">中央大學附近租屋</button>
+          <button type="button">公館附近夜間生活方便嗎</button>
+          <button type="button">台北車站附近吃什麼</button>
+        </div>
+
+        <form id="chat-form">
+          <label class="sr-only" for="chat-input">詢問租屋建議</label>
+          <input id="chat-input" type="text" placeholder="問問租屋生活建議..." autocomplete="off">
+          <button type="submit" aria-label="送出訊息">↑</button>
+        </form>
+      </section>
+
+      <button
+        class="chat-head"
+        id="chat-toggle"
+        type="button"
+        aria-label="開啟 AI 租屋顧問"
+        aria-expanded="false"
+      >
+        <span class="head-bubble">需要租屋建議？</span>
+        <span class="bot-avatar"><span></span></span>
+      </button>
+    </aside>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
