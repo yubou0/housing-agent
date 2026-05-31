@@ -1118,7 +1118,7 @@ h1 strong {
   position: absolute;
   right: 0;
   bottom: 72px;
-  width: min(380px, calc(100vw - 36px));
+  width: min(520px, calc(100vw - 28px));
   overflow: hidden;
   background: var(--white);
   border: 1px solid #e4e8df;
@@ -1171,7 +1171,7 @@ h1 strong {
 }
 
 .messages {
-  height: 285px;
+  height: min(460px, calc(100vh - 230px));
   padding: 16px;
   overflow: auto;
   display: flex;
@@ -1200,22 +1200,6 @@ h1 strong {
   color: var(--white);
   background: var(--green-600);
   border-bottom-right-radius: 4px;
-}
-
-.chat-suggestions {
-  padding: 0 16px 11px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.chat-suggestions button {
-  padding: 6px 10px;
-  border: 1px solid #d9e3dc;
-  color: #50665f;
-  background: #fbfaf7;
-  border-radius: 15px;
-  font-size: 12px;
 }
 
 #chat-form {
