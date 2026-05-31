@@ -513,7 +513,3 @@ chatForm.addEventListener("submit", (event) => {
   const message = chatInput.value.trim();
   if (message) askAssistant(message);
 });
-
-document.querySelectorAll(".chat-suggestions button").forEach((button) => {
-  button.addEventListener("click", () => askAssistant(button.textContent));
-});
