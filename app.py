@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Callable
 
+import requests as http_requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 
@@ -86,6 +88,11 @@ app = Flask(__name__)
 
 DEFAULT_AREA = "台北車站附近"
 QUICK_AREAS = ["台北車站附近", "公館附近", "中山站附近", "中央大學附近", "板橋車站附近"]
+ADK_API_BASE = os.getenv("ADK_API_BASE", "http://localhost:8001").rstrip("/")
+ADK_APP_NAME = os.getenv("ADK_APP_NAME", "housing_agent")
+ADK_USER_ID = os.getenv("ADK_USER_ID", "web-user")
+ADK_SESSION_ID = ""
+ADK_SESSION_READY = False
 
 
 def unavailable_tool(name: str, error: Exception) -> dict[str, Any]:
@@ -415,6 +422,87 @@ def build_llm_summary(
         }
 
 
+def ensure_adk_session() -> str:
+    global ADK_SESSION_ID, ADK_SESSION_READY
+    if not ADK_SESSION_ID:
+        ADK_SESSION_ID = str(time.time())
+    if ADK_SESSION_READY:
+        return ADK_SESSION_ID
+
+    response = http_requests.post(
+        f"{ADK_API_BASE}/apps/{ADK_APP_NAME}/users/{ADK_USER_ID}/sessions/{ADK_SESSION_ID}",
+        headers={"Content-Type": "application/json"},
+        json={},
+        timeout=10,
+    )
+    if response.status_code not in {200, 201, 409}:
+        raise RuntimeError(f"建立 ADK session 失敗：{response.status_code} {response.text}")
+
+    ADK_SESSION_READY = True
+    return ADK_SESSION_ID
+
+
+def _format_function_args(args: dict[str, Any]) -> str:
+    if not args:
+        return ""
+    parts = []
+    for name, value in args.items():
+        if isinstance(value, str):
+            rendered = value
+        else:
+            rendered = json.dumps(value, ensure_ascii=False, default=str)
+        parts.append(f"{name}: {rendered}")
+    return " [" + "] [".join(parts) + "]"
+
+
+def _extract_adk_reply(events: list[dict[str, Any]]) -> str:
+    lines = []
+
+    for event in events:
+        content = event.get("content", {})
+        parts = content.get("parts", [])
+
+        for part in parts:
+            if "functionCall" in part:
+                function_call = part["functionCall"]
+                name = function_call.get("name", "unknown_tool")
+                args = _format_function_args(function_call.get("args", {}))
+                lines.append(f"[Function Call] {name}{args}")
+            elif "functionResponse" in part:
+                function_response = part["functionResponse"]
+                name = function_response.get("name", "tool")
+                lines.append(f"[Function Response] {name} 完成")
+            elif "text" in part and part["text"]:
+                lines.append(part["text"])
+
+    return "\n".join(lines).strip() or "ADK Agent 沒有回傳文字。"
+
+
+def run_adk_agent(message: str) -> str:
+    session_id = ensure_adk_session()
+    body = {
+        "app_name": ADK_APP_NAME,
+        "user_id": ADK_USER_ID,
+        "session_id": session_id,
+        "new_message": {
+            "role": "user",
+            "parts": [{"text": message}],
+        },
+    }
+    response = http_requests.post(
+        f"{ADK_API_BASE}/run",
+        headers={"Content-Type": "application/json"},
+        json=body,
+        timeout=120,
+    )
+    response.raise_for_status()
+    result_json = response.json()
+    if not isinstance(result_json, list):
+        raise RuntimeError(f"ADK /run 回傳格式不正確：{result_json}")
+
+    return _extract_adk_reply(result_json)
+
+
 def chat_reply(message: str) -> str:
     lowered = message.lower()
     include_air = any(keyword in message for keyword in ("空氣", "pm2.5", "AQI", "aqi"))
@@ -475,7 +563,11 @@ def chat() -> Any:
     message = str(body.get("message", "")).strip()
     if not message:
         return jsonify({"error": "請輸入問題。"}), 400
-    return jsonify({"reply": chat_reply(message), "generated_at": now_label()})
+    try:
+        reply = run_adk_agent(message)
+    except Exception as exc:
+        reply = f"ADK Agent 暫時無法回覆：{exc}"
+    return jsonify({"reply": reply, "generated_at": now_label()})
 
 
 @app.get("/health")

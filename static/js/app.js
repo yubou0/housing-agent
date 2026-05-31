@@ -172,7 +172,7 @@ function updateFacilityList(facility) {
   const nearest = [];
   Object.entries(facility.data.nearest_facilities || {}).forEach(([key, places]) => {
     const label = labels[key]?.[1] || "設施";
-    (places || []).slice(0, 2).forEach((place) => nearest.push({ ...place, categoryLabel: label }));
+    (places || []).slice(0, 2).forEach((place) => nearest.push({ ...place, categoryKey: key, categoryLabel: label }));
   });
 
   nearest
@@ -180,7 +180,7 @@ function updateFacilityList(facility) {
     .slice(0, 6)
     .forEach((place) => {
       const detail = `${place.categoryLabel} · 約 ${place.distance_meters ?? "-"} 公尺`;
-      facilityList.appendChild(createFacility(key, place.name || "未命名設施", detail, mapUrlForPlace(place)));
+      facilityList.appendChild(createFacility(place.categoryKey, place.name || "未命名設施", detail, mapUrlForPlace(place)));
     });
 }
 

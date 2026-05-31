@@ -850,7 +850,7 @@ h1 strong {
 .feature-strip {
   max-width: 1232px;
   min-height: 155px;
-  margin: 18px auto 0;
+  margin: 18px auto 110px;
   padding: 30px 36px;
   display: grid;
   grid-template-columns: 250px repeat(6, 1fr);
